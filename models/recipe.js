@@ -14,6 +14,7 @@ const recipeSchema = new Schema(
       default: 1,
     },
     image: { type: String, data: Buffer, required: true },
+    tags: {type: [String], required: false, default: []}
   },
   { timestamps: true }
 );
