@@ -36,8 +36,19 @@ const upload = multer({
 router.use("/all", (req, res) => {
   const search = req.query.search;
   const limit = req.query.limit;
+  const tags = req.query.tags;
+  let query = {};
+  // assembles query based on availability of parameters (undef or not)
 
-  Recipe.find(search ? { title: { $regex: `.*${search}.*` } } : {})
+  if (search) {
+    query["title"] = { $regex: new RegExp(`.*${search}.*`, "i") };
+  }
+
+  if (tags) {
+    query["$and"] = tags.map((tag) => ({ tags: tag }));
+  }
+
+  Recipe.find(query)
     .select("title image")
     .limit(limit ? limit : 15)
     .then((result) => res.json(result));
@@ -56,6 +67,7 @@ router.post("/add", upload.single("image"), (req, res) => {
     ingredients: req.body.ingredients,
     steps: req.body.steps,
     difficulty: req.body.difficulty,
+    tags: req.body.tags,
     image: req.file.path,
   });
 
@@ -100,6 +112,7 @@ router
         recipe.ingredients = req.body.ingredients;
         recipe.steps = req.body.steps;
         recipe.difficulty = req.body.difficulty;
+        recipe.tags = req.body.tags;
         recipe.image = req.file.path;
 
         recipe
