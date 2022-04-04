@@ -4,12 +4,13 @@ const Schema = mongoose.Schema;
 const recipeSchema = new Schema(
   {
     title: { type: String, required: true },
+    description: {type: String, required: false},
     ingredients: { type: [String], required: true },
     steps: { type: [String], required: true },
     difficulty: {
       type: Number,
       min: [1, "Minimum difficulty rating is 1"],
-      max: [10, "Maximum difficulty rating is 10"],
+      max: [5, "Maximum difficulty rating is 5"],
       required: false,
       default: 1,
     },

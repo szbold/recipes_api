@@ -17,7 +17,7 @@ const dbUsername = process.env.dbUsername;
 const dbName = process.env.dbName;
 
 const dbURI = `mongodb+srv://${dbUsername}:${dbPassword}@cluster0.9s0vp.mongodb.net/${dbName}?retryWrites=true&w=majority`
-console.log(dbURI)
+
 mongoose
   .connect(dbURI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => app.listen(port))
