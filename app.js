@@ -10,11 +10,17 @@ const corsOpts = {
 
 }
 
-const dbURI = 'mongodb+srv://szymonbold:Kanjialive365@cluster0.9s0vp.mongodb.net/recipes_api?retryWrites=true&w=majority'
+const dotenv = require('dotenv');
+dotenv.config();
+const dbPassword = process.env.dbPassword;
+const dbUsername = process.env.dbUsername;
+const dbName = process.env.dbName;
 
+const dbURI = `mongodb+srv://${dbUsername}:${dbPassword}@cluster0.9s0vp.mongodb.net/${dbName}?retryWrites=true&w=majority`
+console.log(dbURI)
 mongoose
   .connect(dbURI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then((result) => app.listen(port))
+  .then(() => app.listen(port))
   .catch((err) => console.log(err));
 
 app.set('view engine', 'ejs');
