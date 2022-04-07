@@ -50,26 +50,59 @@ router.use("/all", (req, res) => {
 
   Recipe.find(query)
     .select("title image")
-    .limit(limit ? limit : 15).sort({'createdAt': -1})
+    .limit(limit ? limit : 15)
+    .sort({ createdAt: -1 })
     .then((result) => res.json(result));
 });
 
 // adds new recipe to db
 router.post("/add", upload.single("image"), (req, res) => {
   // new recipe instance following schema
-  if (!req.file) {
-    res.status(400).send({ error: "Invalid file" });
+  let newRecipeModel = {};
+  if (req.body.title !== undefined) {
+    newRecipeModel["title"] = req.body.title;
+  } else {
+    fs.unlink(req.file.path, function () {});
+    res.status(400).send({ error: "No title" });
     return;
   }
 
-  const newRecipe = new Recipe({
-    title: req.body.title,
-    ingredients: req.body.ingredients,
-    steps: req.body.steps,
-    difficulty: req.body.difficulty,
-    tags: req.body.tags,
-    image: req.file.path,
-  });
+  if (req.body.ingredients !== undefined) {
+    newRecipeModel["ingredients"] = req.body.ingredients;
+  } else {
+    fs.unlink(req.file.path, function () {});
+    res.status(400).send({ error: "No ingredients" });
+    return;
+  }
+
+  if (req.body.steps !== undefined) {
+    newRecipeModel["steps"] = req.body.steps;
+  } else {
+    fs.unlink(req.file.path, function () {});
+    res.status(400).send({ error: "No steps" });
+    return;
+  }
+
+  if (req.file !== undefined) {
+    newRecipeModel["image"] = req.file.path;
+  } else {
+    res.status(400).send({ error: "No image" });
+    return;
+  }
+
+  if (req.body.description !== undefined) {
+    newRecipeModel["description"] = req.body.description;
+  }
+
+  if (req.body.difficulty !== undefined) {
+    newRecipeModel["difficulty"] = req.body.difficulty;
+  }
+
+  if (req.body.tags !== undefined) {
+    newRecipeModel["tags"] = req.body.tags;
+  }
+
+  const newRecipe = new Recipe(newRecipeModel);
 
   newRecipe
     .save()
@@ -80,7 +113,7 @@ router.post("/add", upload.single("image"), (req, res) => {
       // formatted response message
       const message = err.message;
       let colon = message.lastIndexOf(":") + 2;
-      res.status(409).send({ error: message.substring(colon, message.length) });
+      res.status(400).send({ error: message.substring(colon, message.length) });
     });
 });
 
@@ -109,6 +142,7 @@ router
         const recipe = result;
         const imagefile = recipe.image;
         recipe.title = req.body.title;
+        recipe.description = req.body.description;
         recipe.ingredients = req.body.ingredients;
         recipe.steps = req.body.steps;
         recipe.difficulty = req.body.difficulty;
@@ -127,6 +161,16 @@ router
           });
       })
       .catch(() => res.status(404).send({ error: "Not found" }));
+  })
+  .patch(upload.single('image'), (req, res) => {
+    const fullrequest = {...req.body, image: req.file.path}
+
+    Recipe.findByIdAndUpdate(req.params.id, fullrequest, { new: true }).then(
+      (recipe) => {
+        fs.unlink(recipe.image, function() {})
+        res.json(recipe);
+      }
+    ).catch(err => res.status(404).send({error: err}));
   })
   .delete((req, res) => {
     // delete and error handling, 404 if no recipe found, 400 on any other case

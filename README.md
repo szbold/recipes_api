@@ -17,7 +17,7 @@
 
 ```
 /recipes
-  |-> /all - gets all recipes (default limit is 25, search params work here)
-  |-> /:id - get, put, delete
-  |-> /add - create new recipe
+  /all - gets all recipes (default limit is 25, search params and tags work here, sorting is by date - descending)
+  /:id - get, delete, patch
+  /add - create new recipe
 ```

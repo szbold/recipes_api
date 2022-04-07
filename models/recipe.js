@@ -4,7 +4,7 @@ const Schema = mongoose.Schema;
 const recipeSchema = new Schema(
   {
     title: { type: String, required: true },
-    description: {type: String, required: false},
+    description: { type: String, required: false },
     ingredients: { type: [String], required: true },
     steps: { type: [String], required: true },
     difficulty: {
@@ -15,7 +15,7 @@ const recipeSchema = new Schema(
       default: 1,
     },
     image: { type: String, data: Buffer, required: true },
-    tags: {type: [String], required: false, default: []}
+    tags: { type: [String], required: false, default: [] },
   },
   { timestamps: true }
 );
