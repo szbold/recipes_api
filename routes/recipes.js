@@ -163,12 +163,17 @@ router
       .catch(() => res.status(404).send({ error: "Not found" }));
   })
   .patch(upload.single('image'), (req, res) => {
-    const fullrequest = {...req.body, image: req.file.path}
+    const fullrequest = {...req.body}
+    if (req.file !== undefined) {
+      fullrequest['image'] = req.file.path;
+    }
 
-    Recipe.findByIdAndUpdate(req.params.id, fullrequest, { new: true }).then(
+    Recipe.findByIdAndUpdate(req.params.id, fullrequest).then(
       (recipe) => {
-        fs.unlink(recipe.image, function() {})
-        res.json(recipe);
+        if (fullrequest.image) {
+          fs.unlink(recipe.image, function() {})
+        }
+        res.sendStatus(204);
       }
     ).catch(err => res.status(404).send({error: err}));
   })
