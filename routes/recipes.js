@@ -49,7 +49,7 @@ router.use("/all", (req, res) => {
   }
 
   Recipe.find(query)
-    .select("title image")
+    .select("title image difficulty")
     .limit(limit ? limit : 15)
     .sort({ createdAt: -1 })
     .then((result) => res.json(result));

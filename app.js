@@ -6,8 +6,7 @@ const mongoose = require("mongoose");
 const recipeRouter = require('./routes/recipes');
 const cors = require('cors');
 const corsOpts = {
-  origin: 'http://localhost:3000',
-
+  origin: 'http://192.168.1.18:3000',
 }
 
 const dotenv = require('dotenv');
@@ -20,7 +19,7 @@ const dbURI = `mongodb+srv://${dbUsername}:${dbPassword}@cluster0.9s0vp.mongodb.
 
 mongoose
   .connect(dbURI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => app.listen(port))
+  .then(() => app.listen(port, '192.168.1.18'))
   .catch((err) => console.log(err));
 
 app.set('view engine', 'ejs');
