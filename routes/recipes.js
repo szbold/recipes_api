@@ -49,7 +49,7 @@ router.use("/all", (req, res) => {
   }
 
   Recipe.find(query)
-    .select("title image difficulty")
+    .select("title image difficulty prepTime servings")
     .limit(limit ? limit : 15)
     .sort({ createdAt: -1 })
     .then((result) => res.json(result));
@@ -64,6 +64,22 @@ router.post("/add", upload.single("image"), (req, res) => {
   } else {
     fs.unlink(req.file.path, function () {});
     res.status(400).send({ error: "No title" });
+    return;
+  }
+
+  if (req.body.servings !== undefined) {
+    newRecipeModel["servings"] = req.body.servings;
+  } else {
+    fs.unlink(req.file.path, function () {});
+    res.status(400).send({ error: "No servings" });
+    return;
+  }
+
+  if (req.body.prepTime !== undefined) {
+    newRecipeModel["prepTime"] = req.body.prepTime;
+  } else {
+    fs.unlink(req.file.path, function () {});
+    res.status(400).send({ error: "No preparation time" });
     return;
   }
 
@@ -127,38 +143,6 @@ router
           res.status(404).send({ error: "Not found" });
         }
         res.status(200).json(result);
-      })
-      .catch(() => res.status(404).send({ error: "Not found" }));
-  })
-  .put(upload.single("image"), (req, res) => {
-    // simple form data update
-
-    if (!req.file) {
-      res.status(400).send({ error: "File not attached" });
-    }
-
-    Recipe.findOne({ _id: req.params.id })
-      .then((result) => {
-        const recipe = result;
-        const imagefile = recipe.image;
-        recipe.title = req.body.title;
-        recipe.description = req.body.description;
-        recipe.ingredients = req.body.ingredients;
-        recipe.steps = req.body.steps;
-        recipe.difficulty = req.body.difficulty;
-        recipe.tags = req.body.tags;
-        recipe.image = req.file.path;
-
-        recipe
-          .save()
-          .then((result) => {
-            fs.unlink(imagefile, function () {
-              res.status(200).json(result);
-            });
-          })
-          .catch(() => {
-            res.status(400).send({ error: "Bad request" });
-          });
       })
       .catch(() => res.status(404).send({ error: "Not found" }));
   })

@@ -5,6 +5,8 @@ const recipeSchema = new Schema(
   {
     title: { type: String, required: true },
     description: { type: String, required: false },
+    servings: {type: String, required: true},
+    prepTime: {type: String, required: true},
     ingredients: { type: [String], required: true },
     steps: { type: [String], required: true },
     difficulty: {
