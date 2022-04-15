@@ -4,7 +4,7 @@ const app = express();
 const port = 8000;
 const mongoose = require("mongoose");
 const path = require('path');
-const recipeRouter = require(path.join('./routes/recipes'));
+const recipeRouter = require(path.join(__dirname, './routes/recipes'));
 const cors = require('cors');
 const corsOpts = {
      origin: 'https://palcelizac.herokuapp.com',
