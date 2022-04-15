@@ -24,7 +24,7 @@ app.set('view engine', 'ejs');
 app.use('/images', express.static('images'));
 app.use(cors(corsOpts));
 app.use(express.json());
-app.use(serveStatic(path(__dirname + '/client/dist')))
+app.use(serveStatic(path.join(__dirname + '/client/dist')))
 app.use(bodyParser.urlencoded({ extended: true })); 
 
 
