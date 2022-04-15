@@ -1,20 +1,20 @@
 const express = require("express");
 const router = express.Router();
-const Recipe = require("../models/recipe");
+const path = require('path');
+const Recipe = require(path.join(__dirname, "../models/recipe"));
 const multer = require("multer");
 const fs = require("fs");
-const { auth } = require("express-openid-connect");
 const dotenv = require("dotenv");
 dotenv.config();
 
-const config = {
-  authRequired: false,
-  auth0Logout: true,
-  secret: process.env.SECRET,
-  baseURL: process.env.BASEURL,
-  clientID: process.env.CLIENTID,
-  issuerBaseURL: process.env.ISSUERBASEURL,
-};
+// const config = {
+//   authRequired: false,
+//   auth0Logout: true,
+//   secret: process.env.SECRET,
+//   baseURL: process.env.BASEURL,
+//   clientID: process.env.CLIENTID,
+//   issuerBaseURL: process.env.ISSUERBASEURL,
+// };
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -45,7 +45,7 @@ const upload = multer({
 });
 
 // auth0 shenanigans
-router.use(auth(config));
+// router.use(auth(config));
 
 // test
 router.get("/auth", (req, res) => {

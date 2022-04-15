@@ -19,6 +19,7 @@
     "mongodb": "^4.4.1",
     "mongoose": "^6.2.5",
     "multer": "^1.4.4",
-    "nodemon": "^2.0.15"
+    "nodemon": "^2.0.15",
+    "serve-static": "^1.15.0"
   }
 }
