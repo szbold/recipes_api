@@ -16,7 +16,7 @@ const dbURI = `mongodb+srv://${process.env.DBUSERNAME}:${process.env.DBPASSWORD}
 
 mongoose
   .connect(dbURI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => app.listen(port))
+  .then(() => app.listen(process.env.PORT || port))
   .catch((err) => console.log(err));
 
 app.set('view engine', 'ejs');
