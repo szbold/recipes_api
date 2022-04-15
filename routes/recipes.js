@@ -3,6 +3,18 @@ const router = express.Router();
 const Recipe = require("../models/recipe");
 const multer = require("multer");
 const fs = require("fs");
+const { auth } = require("express-openid-connect");
+const dotenv = require("dotenv");
+dotenv.config();
+
+const config = {
+  authRequired: false,
+  auth0Logout: true,
+  secret: process.env.SECRET,
+  baseURL: process.env.BASEURL,
+  clientID: process.env.CLIENTID,
+  issuerBaseURL: process.env.ISSUERBASEURL,
+};
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -32,6 +44,18 @@ const upload = multer({
   },
 });
 
+// auth0 shenanigans
+router.use(auth(config));
+
+// test
+router.get("/auth", (req, res) => {
+  const auth = req.oidc.isAuthenticated();
+  if (auth) {
+    console.log(req.oidc.user);
+  }
+  res.send(auth ? "Logged in" : "Logged out");
+});
+
 // gets all the recipes, search and limit params
 router.use("/all", (req, res) => {
   const search = req.query.search;
@@ -52,7 +76,7 @@ router.use("/all", (req, res) => {
     .select("title image difficulty prepTime servings")
     .limit(limit ? limit : 15)
     .sort({ createdAt: -1 })
-    .then((result) => res.json(result));
+    .then((result) => res.status(200).json(result));
 });
 
 // adds new recipe to db
@@ -146,22 +170,24 @@ router
       })
       .catch(() => res.status(404).send({ error: "Not found" }));
   })
-  .patch(upload.single('image'), (req, res) => {
-    const fullrequest = {...req.body}
+  .patch(upload.single("image"), (req, res) => {
+
+    const fullRequest = { ...req.body };
     if (req.file !== undefined) {
-      fullrequest['image'] = req.file.path;
+      fullRequest["image"] = req.file.path;
     }
 
-    Recipe.findByIdAndUpdate(req.params.id, fullrequest).then(
-      (recipe) => {
-        if (fullrequest.image) {
-          fs.unlink(recipe.image, function() {})
+    Recipe.findByIdAndUpdate(req.params.id, fullRequest)
+      .then((recipe) => {
+        if (fullRequest.image) {
+          fs.unlink(recipe.image, function () {});
         }
         res.sendStatus(204);
-      }
-    ).catch(err => res.status(404).send({error: err}));
+      })
+      .catch((err) => res.status(404).send({ error: err }));
   })
   .delete((req, res) => {
+
     // delete and error handling, 404 if no recipe found, 400 on any other case
     Recipe.findByIdAndDelete(req.params.id, function (err, recipe) {
       if (err) {

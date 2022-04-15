@@ -12,11 +12,7 @@ const corsOpts = {
 
 const dotenv = require('dotenv');
 dotenv.config();
-const dbPassword = process.env.dbPassword;
-const dbUsername = process.env.dbUsername;
-const dbName = process.env.dbName;
-
-const dbURI = `mongodb+srv://${dbUsername}:${dbPassword}@cluster0.9s0vp.mongodb.net/${dbName}?retryWrites=true&w=majority`
+const dbURI = `mongodb+srv://${process.env.DBUSERNAME}:${process.env.DBPASSWORD}@cluster0.9s0vp.mongodb.net/${process.env.DBNAME}?retryWrites=true&w=majority`
 
 mongoose
   .connect(dbURI, { useNewUrlParser: true, useUnifiedTopology: true })
