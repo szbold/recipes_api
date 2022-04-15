@@ -3,9 +3,8 @@ var bodyParser = require('body-parser');
 const app = express();
 const port = 8000;
 const mongoose = require("mongoose");
-const serveStatic = require('serve-static');
 const path = require('path');
-const recipeRouter = require('./routes/recipes');
+const recipeRouter = require(path.join('./routes/recipes'));
 const cors = require('cors');
 const corsOpts = {
      origin: 'https://palcelizac.herokuapp.com',
@@ -24,7 +23,6 @@ app.set('view engine', 'ejs');
 app.use('/images', express.static('images'));
 app.use(cors(corsOpts));
 app.use(express.json());
-app.use(serveStatic(path.join(__dirname + '/client/dist')))
 app.use(bodyParser.urlencoded({ extended: true })); 
 
 
