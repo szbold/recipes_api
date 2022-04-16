@@ -18,7 +18,7 @@ dotenv.config();
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "./images/");
+    cb(null, path.join(__dirname, "./images"));
   },
   filename: function (req, file, cb) {
     cb(null, new Date().toISOString().replace(/:/g, '-') + file.originalname);
@@ -48,13 +48,13 @@ const upload = multer({
 // router.use(auth(config));
 
 // test
-router.get("/auth", (req, res) => {
-  const auth = req.oidc.isAuthenticated();
-  if (auth) {
-    console.log(req.oidc.user);
-  }
-  res.send(auth ? "Logged in" : "Logged out");
-});
+// router.get("/auth", (req, res) => {
+//   const auth = req.oidc.isAuthenticated();
+//   if (auth) {
+//     console.log(req.oidc.user);
+//   }
+//   res.send(auth ? "Logged in" : "Logged out");
+// });
 
 // gets all the recipes, search and limit params
 router.use("/all", (req, res) => {
