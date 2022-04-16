@@ -18,7 +18,7 @@ dotenv.config();
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, "./images"));
+    cb(null, path.join(__dirname, "../images"));
   },
   filename: function (req, file, cb) {
     cb(null, new Date().toISOString().replace(/:/g, '-') + file.originalname);
