@@ -1,15 +1,58 @@
 const express = require("express");
 const aws = require("aws-sdk");
-const fileUpload = require("express-fileupload");
 const router = express.Router();
 const path = require("path");
 const Recipe = require(path.join(__dirname, "../models/recipe"));
+const multer = require("multer");
+const fs = require("fs");
 const dotenv = require("dotenv");
 dotenv.config();
 const S3_BUCKET = process.env.S3_BUCKET_NAME;
 aws.config.region = "eu-central-1";
 
-router.use(fileUpload());
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, path.join(__dirname, "./images"));
+  },
+  filename: function (req, file, cb) {
+    cb(null, new Date().toISOString().replace(/:/g, "-") + file.originalname);
+  },
+});
+
+// checks for jpeg or png file
+const upload = multer({
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    if (
+      file.mimetype == "image/png" ||
+      file.mimetype == "image/jpg" ||
+      file.mimetype == "image/jpeg"
+    ) {
+      cb(null, true);
+    } else {
+      return cb(
+        null,
+        false,
+        new Error("Only .png, .jpg and .jpeg format allowed!")
+      );
+    }
+  },
+});
+
+router.get("/s3", (req, res) => {
+  const s3 = new aws.S3();
+  const params = {
+    Bucket: S3_BUCKET,
+    Key: 'icon.png',
+  }
+  s3.getObject(params, function (err, data) {
+    if (err) {
+      res.send(err);
+    } else {
+      res.send(data);
+    }
+  })
+});
 
 // gets all the recipes, search and limit params
 router.use("/all", (req, res) => {
@@ -35,13 +78,13 @@ router.use("/all", (req, res) => {
 });
 
 // adds new recipe to db
-router.post("/add", (req, res) => {
+router.post("/add", upload.single("image"), (req, res) => {
   // new recipe instance following schema
   let newRecipeModel = {};
-  let uniqueName = "";
   if (req.body.title !== undefined) {
     newRecipeModel["title"] = req.body.title;
   } else {
+    fs.unlink(req.file.path, function () {});
     res.status(400).send({ error: "No title" });
     return;
   }
@@ -49,6 +92,7 @@ router.post("/add", (req, res) => {
   if (req.body.servings !== undefined) {
     newRecipeModel["servings"] = req.body.servings;
   } else {
+    fs.unlink(req.file.path, function () {});
     res.status(400).send({ error: "No servings" });
     return;
   }
@@ -56,6 +100,7 @@ router.post("/add", (req, res) => {
   if (req.body.prepTime !== undefined) {
     newRecipeModel["prepTime"] = req.body.prepTime;
   } else {
+    fs.unlink(req.file.path, function () {});
     res.status(400).send({ error: "No preparation time" });
     return;
   }
@@ -63,6 +108,7 @@ router.post("/add", (req, res) => {
   if (req.body.ingredients !== undefined) {
     newRecipeModel["ingredients"] = req.body.ingredients;
   } else {
+    fs.unlink(req.file.path, function () {});
     res.status(400).send({ error: "No ingredients" });
     return;
   }
@@ -70,13 +116,13 @@ router.post("/add", (req, res) => {
   if (req.body.steps !== undefined) {
     newRecipeModel["steps"] = req.body.steps;
   } else {
+    fs.unlink(req.file.path, function () {});
     res.status(400).send({ error: "No steps" });
     return;
   }
 
-  if (req.files["image"] !== undefined) {
-    uniqueName = "images/" + new Date().toISOString() + req.files["image"].name;
-    newRecipeModel["image"] = uniqueName;
+  if (req.file !== undefined) {
+    newRecipeModel["image"] = req.file.path;
   } else {
     res.status(400).send({ error: "No image" });
     return;
@@ -95,24 +141,11 @@ router.post("/add", (req, res) => {
   }
 
   const newRecipe = new Recipe(newRecipeModel);
-  const s3 = new aws.S3();
-  params = {
-    Bucket: S3_BUCKET,
-    Key: uniqueName,
-    Body: req.files["image"].data,
-    ACL: "public-read",
-  };
 
   newRecipe
     .save()
     .then((result) => {
-      s3.upload(params, function (err, data) {
-        if (err) {
-          res.send(err);
-        } else {
-          res.send(result);
-        }
-      });
+      res.status(201).json(result);
     })
     .catch((err) => {
       // formatted response message
@@ -135,45 +168,16 @@ router
       })
       .catch(() => res.status(404).send({ error: "Not found" }));
   })
-  .patch((req, res) => {
-    const s3 = new aws.S3();
+  .patch(upload.single("image"), (req, res) => {
     const fullRequest = { ...req.body };
-    let uniqueName = "";
-    if (req.files !== null) {
-      if (req.files['image'] !== undefined) {
-        console.log(req.files);
-        uniqueName =
-          "images/" + new Date().toISOString() + req.files["image"].name;
-        fullRequest["image"] = uniqueName;
-      }
+    if (req.file !== undefined) {
+      fullRequest["image"] = req.file.path;
     }
 
     Recipe.findByIdAndUpdate(req.params.id, fullRequest)
       .then((recipe) => {
         if (fullRequest.image) {
-          let params = {
-            Bucket: S3_BUCKET,
-            Key: uniqueName,
-            Body: req.files['image'].data
-          }
-
-          s3.upload(params, function (err, data) {
-            if (err) {
-              res.send(err);
-              return;
-            }
-          })
-
-          params = {
-            Bucket: S3_BUCKET,
-            Key: recipe.image,
-          };
-          s3.deleteObject(params, function (err, data) {
-            if (err) {
-              res.send(err);
-              return;
-            }
-          });
+          fs.unlink(recipe.image, function () {});
         }
         res.sendStatus(204);
       })
@@ -187,20 +191,11 @@ router
       } else {
         if (recipe === null) {
           res.status(404).send({ error: "Not found" });
-          return;
+        } else {
+          fs.unlink(recipe.image, function () {
+            res.status(204).send({ message: "No content" });
+          });
         }
-        const s3 = new aws.S3();
-        params = {
-          Bucket: S3_BUCKET,
-          Key: recipe.image
-        }
-        s3.deleteObject(params, function (err, data) {
-          if (err) {
-            res.send(err);
-            return;
-          }
-          res.status(204).send();
-        })
       }
     });
   });

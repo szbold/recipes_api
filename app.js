@@ -5,6 +5,7 @@ const port = 8000;
 const mongoose = require("mongoose");
 const path = require('path');
 const recipeRouter = require(path.join(__dirname, './routes/recipes'));
+
 const cors = require('cors');
 const corsOpts = {
      origin: 'https://palcelizac.herokuapp.com',
@@ -19,7 +20,6 @@ mongoose
   .then(() => app.listen(process.env.PORT || port))
   .catch((err) => console.log(err));
 
-app.set('view engine', 'ejs');
 app.use('/images', express.static('images'));
 app.use(cors(corsOpts));
 app.use(express.json());
