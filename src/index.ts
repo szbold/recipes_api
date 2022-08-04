@@ -4,7 +4,7 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import dotenv from "dotenv";
 
-import { router as recipesRouter } from "./src/routes/recipes";
+import { router as recipesRouter } from "./routes/recipes";
 
 const app = express();
 
@@ -14,7 +14,7 @@ const corsOpts = {
 };
 
 dotenv.config();
-const dbURI = `mongodb+srv://${process.env.DBUSERNAME}:${process.env.DBPASSWORD}@cluster0.9s0vp.mongodb.net/${process.env.DBNAME}?retryWrites=true&w=majority`;
+const dbURI = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.9s0vp.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`;
 
 (async () => {
   try {

@@ -1,4 +1,5 @@
 /node_modules
-/images/*
+/images
+/test
 .env
 package-lock.json
