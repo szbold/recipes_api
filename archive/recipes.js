@@ -140,7 +140,7 @@ router
     const fullRequest = { ...req.body };
     let uniqueName = "";
     if (req.files !== null) {
-      if (req.files['image'] !== undefined) {
+      if (req.files["image"] !== undefined) {
         console.log(req.files);
         uniqueName =
           "images/" + new Date().toISOString() + req.files["image"].name;
@@ -154,15 +154,15 @@ router
           let params = {
             Bucket: S3_BUCKET,
             Key: uniqueName,
-            Body: req.files['image'].data
-          }
+            Body: req.files["image"].data,
+          };
 
           s3.upload(params, function (err, data) {
             if (err) {
               res.send(err);
               return;
             }
-          })
+          });
 
           params = {
             Bucket: S3_BUCKET,
@@ -192,15 +192,15 @@ router
         const s3 = new aws.S3();
         params = {
           Bucket: S3_BUCKET,
-          Key: recipe.image
-        }
+          Key: recipe.image,
+        };
         s3.deleteObject(params, function (err, data) {
           if (err) {
             res.send(err);
             return;
           }
           res.status(204).send();
-        })
+        });
       }
     });
   });
