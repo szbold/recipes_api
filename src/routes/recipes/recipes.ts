@@ -11,7 +11,8 @@ import sharp from "sharp";
 import sizeOf from "image-size";
 
 import { exit } from "process";
-import { Error } from "../../errors";
+import { ResError } from "../../errors";
+import { imageValidator } from "../../utils/validation";
 
 dotenv.config();
 const S3_BUCKET = process.env.S3_BUCKET_NAME;
@@ -53,50 +54,42 @@ router.use("/all", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/add", async (req: Request, res: Response) => {
+router.post("/add", imageValidator, async (req: Request, res: Response) => {
   // TODO - implement custom upload middleware which checks for file type and processes the file in a manageable way
-  const image: UploadedFile | UploadedFile[] | undefined = req.files?.image;
-
-  if (!image) {
-    res.status(500).send({ errcode: Error.noFile });
-    return;
-  }
-
-  if (Array.isArray(image)) {
-    res.status(500).send({ errcode: Error.fileCount });
-    return;
-  }
-
-  const uniqueImageName = generateImageName(image.name);
+  const image = req.body.image;
   const dims = sizeOf(image.data);
-  const resizeFactor = Math.round(dims.width / 700);
 
-  const s3 = new aws.S3();
+  if (dims.width && dims.height) {
+    const uniqueImageName = generateImageName(image.name);
+    const resizeFactor = Math.round(dims.width / 700);
 
-  const newRecipe = new Recipe({ ...req.body, image: uniqueImageName });
+    const s3 = new aws.S3();
 
-  try {
-    const data = await newRecipe.save();
-    const compressedImage = await sharp(image.data)
-      .webp()
-      .resize(700, Math.round(dims.height / resizeFactor))
-      .toBuffer();
+    const newRecipe = new Recipe({ ...req.body, image: uniqueImageName });
 
-    const params: PutObjectRequest = {
-      Bucket: S3_BUCKET,
-      Key: uniqueImageName,
-      Body: compressedImage,
-      ACL: "public-read",
-    };
+    try {
+      const data = await newRecipe.save();
+      const compressedImage = await sharp(image.data)
+        .webp()
+        .resize(700, Math.round(dims.height / resizeFactor))
+        .toBuffer();
 
-    s3.upload(params, (err) => {
-      if (err) {
-        res.status(500).send({ errcode: Error.serverError, error: err });
-      }
-    });
-    res.status(201).send(data);
-  } catch (err) {
-    res.status(500).send({ errcode: Error.serverError, error: err });
+      const params: PutObjectRequest = {
+        Bucket: S3_BUCKET,
+        Key: uniqueImageName,
+        Body: compressedImage,
+        ACL: "public-read",
+      };
+
+      s3.upload(params, (err) => {
+        if (err) {
+          res.status(500).send({ errcode: ResError.s3Error, ResError: err });
+        }
+      });
+      res.status(201).send(data);
+    } catch (err) {
+      res.status(500).send({ errcode: ResError.serverError, ResError: err });
+    }
   }
 });
 
@@ -107,7 +100,7 @@ router
       const data = await Recipe.findOne({ _id: req.params.id });
       res.status(200).send(data);
     } catch (err) {
-      res.status(404).send({ errcode: Error.notFound, error: err });
+      res.status(404).send({ errcode: ResError.notFound, ResError: err });
     }
   })
   //   .patch((req, res) => {
@@ -152,19 +145,19 @@ router
   //         }
   //         res.sendStatus(204);
   //       })
-  //       .catch((err) => res.status(404).send({ error: err }));
+  //       .catch((err) => res.status(404).send({ ResError: err }));
   //   })
   .delete((req: Request, res: Response) => {
     Recipe.findByIdAndDelete(
       req.params.id,
       (err: MongooseError, recipe: IRecipe) => {
         if (err) {
-          res.status(500).send({ errcode: Error.serverError, error: err });
+          res.status(500).send({ errcode: ResError.dbError, ResError: err });
           return;
         }
 
         if (recipe === null) {
-          res.status(404).send({ errcode: Error.notFound });
+          res.status(404).send({ errcode: ResError.notFound });
           return;
         }
 
@@ -176,7 +169,7 @@ router
 
         s3.deleteObject(params, (err) => {
           if (err) {
-            res.status(500).send({ errcode: Error.serverError, error: err });
+            res.status(500).send({ errcode: ResError.s3Error, ResError: err });
             return;
           }
           res.status(204).send();

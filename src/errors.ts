@@ -1,7 +1,9 @@
-export enum Error {
+export enum ResError {
   notFound = "NOT_FOUND",
-  serverError = "SERVER_ERROR",
   fileFormat = "INVALID_FILE_FORMAT",
   fileCount = "INVALID_FILE_COUNT",
-  noFile = "NO_FILE",
+  s3Error = "S3_ERROR",
+  serverError = "SERVER_ERROR",
+  dbError = "DATABASE_ERROR",
+  fileError = "FILE_POSSIBLY_CORRUPTED",
 }
