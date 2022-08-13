@@ -13,24 +13,45 @@ const allowedTypes = [
 export const imageValidator: RequestHandler = (req, res, next) => {
   const image = req.files?.image;
 
-  fileCountValidator(image);
-  fileFormatValidator(image);
+  if (!image || Array.isArray(image)) {
+    res.status(400).send({ err: ResError.fileCount });
+    return;
+  }
+
+  if (!allowedTypes.includes(image.mimetype)) {
+    res.status(400).send({ err: ResError.fileFormat });
+    return;
+  }
 
   req.body.image = image;
 
   next();
 };
 
-const fileFormatValidator = (file: UploadedFile) => {
-  if (!(file.mimetype in allowedTypes)) {
-    throw new Error(ResError.fileFormat);
-  }
-};
+export const optionalImageValidator: RequestHandler = (req, res, next) => {
+  const image = req.files?.image;
 
-const fileCountValidator = (
-  file: UploadedFile | UploadedFile[] | undefined
-) => {
-  if (!file || Array.isArray(file)) {
-    throw new Error(ResError.fileCount);
+  if (image && !Array.isArray(image)) {
+    if (!allowedTypes.includes(image.mimetype)) {
+      res.status(400).send({ err: ResError.fileFormat });
+      return;
+    }
+
+    req.body.image = image;
   }
+
+  next();
 };
+// TODO - make this work with the above validator
+
+// const fileFormatValidator = (file: UploadedFile) => {
+//   return file.mimetype in allowedTypes;
+// };
+
+// const fileCountValidator = (
+//   file: UploadedFile | UploadedFile[] | undefined
+// ) => {
+//   if (!file || Array.isArray(file)) {
+//     throw new Error(ResError.fileCount);
+//   }
+// };

@@ -1,18 +1,15 @@
 import express, { Request, Response } from "express";
 import aws from "aws-sdk";
 import dotenv from "dotenv";
-import fileUpload, { UploadedFile } from "express-fileupload";
+import fileUpload from "express-fileupload";
 import { IQueryParams } from "./types";
 import { IRecipe, Recipe } from "../../models";
-import { generateImageName } from "../../utils/images";
-import { PutObjectRequest } from "aws-sdk/clients/s3";
+import { generateImageName, parseImage } from "../../utils/images";
+import { DeleteObjectRequest, PutObjectRequest } from "aws-sdk/clients/s3";
 import { MongooseError } from "mongoose";
-import sharp from "sharp";
-import sizeOf from "image-size";
-
 import { exit } from "process";
 import { ResError } from "../../errors";
-import { imageValidator } from "../../utils/validation";
+import { imageValidator, optionalImageValidator } from "../../utils/validation";
 
 dotenv.config();
 const S3_BUCKET = process.env.S3_BUCKET_NAME;
@@ -54,30 +51,24 @@ router.use("/all", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/add", imageValidator, async (req: Request, res: Response) => {
-  // TODO - implement custom upload middleware which checks for file type and processes the file in a manageable way
-  const image = req.body.image;
-  const dims = sizeOf(image.data);
+router.post(
+  "/add",
+  imageValidator,
+  parseImage,
+  async (req: Request, res: Response) => {
+    const { image, ...reqBody } = req.body;
 
-  if (dims.width && dims.height) {
     const uniqueImageName = generateImageName(image.name);
-    const resizeFactor = Math.round(dims.width / 700);
-
-    const s3 = new aws.S3();
-
-    const newRecipe = new Recipe({ ...req.body, image: uniqueImageName });
+    const newRecipe = new Recipe({ ...reqBody, image: uniqueImageName });
 
     try {
       const data = await newRecipe.save();
-      const compressedImage = await sharp(image.data)
-        .webp()
-        .resize(700, Math.round(dims.height / resizeFactor))
-        .toBuffer();
 
+      const s3 = new aws.S3();
       const params: PutObjectRequest = {
         Bucket: S3_BUCKET,
         Key: uniqueImageName,
-        Body: compressedImage,
+        Body: image.data,
         ACL: "public-read",
       };
 
@@ -87,11 +78,9 @@ router.post("/add", imageValidator, async (req: Request, res: Response) => {
         }
       });
       res.status(201).send(data);
-    } catch (err) {
-      res.status(500).send({ errcode: ResError.serverError, ResError: err });
-    }
+    } catch (err) {}
   }
-});
+);
 
 router
   .route("/:id")
@@ -103,50 +92,57 @@ router
       res.status(404).send({ errcode: ResError.notFound, ResError: err });
     }
   })
-  //   .patch((req, res) => {
-  //     const s3 = new aws.S3();
-  //     const fullRequest = { ...req.body };
-  //     let uniqueName = "";
-  //     if (req.files !== null) {
-  //       if (req.files["image"] !== undefined) {
-  //         console.log(req.files);
-  //         uniqueName =
-  //           "images/" + new Date().toISOString() + req.files["image"].name;
-  //         fullRequest["image"] = uniqueName;
-  //       }
-  //     }
+  .patch(
+    optionalImageValidator,
+    parseImage,
+    async (req: Request, res: Response) => {
+      let queryData = {
+        ...req.body,
+      };
 
-  //     Recipe.findByIdAndUpdate(req.params.id, fullRequest)
-  //       .then((recipe) => {
-  //         if (fullRequest.image) {
-  //           let params = {
-  //             Bucket: S3_BUCKET,
-  //             Key: uniqueName,
-  //             Body: req.files["image"].data,
-  //           };
+      if (req.body.image) {
+        const uniqueImageName = generateImageName(req.body.image.name);
+        queryData = { ...queryData, image: uniqueImageName };
+      }
 
-  //           s3.upload(params, function (err, data) {
-  //             if (err) {
-  //               res.send(err);
-  //               return;
-  //             }
-  //           });
+      try {
+        const data = await Recipe.findByIdAndUpdate(req.params.id, queryData);
 
-  //           params = {
-  //             Bucket: S3_BUCKET,
-  //             Key: recipe.image,
-  //           };
-  //           s3.deleteObject(params, function (err, data) {
-  //             if (err) {
-  //               res.send(err);
-  //               return;
-  //             }
-  //           });
-  //         }
-  //         res.sendStatus(204);
-  //       })
-  //       .catch((err) => res.status(404).send({ ResError: err }));
-  //   })
+        if (data && req.body.image) {
+          const s3 = new aws.S3();
+          const params: PutObjectRequest = {
+            Bucket: S3_BUCKET,
+            Key: queryData.image,
+            Body: req.body.image ? req.body.image.data : null,
+          };
+
+          s3.upload(params, (err) => {
+            if (err) {
+              res.status(500).send({ err: ResError.s3Error });
+              return;
+            }
+          });
+
+          s3.deleteObject(
+            {
+              Bucket: S3_BUCKET,
+              Key: data.image,
+            },
+            (err) => {
+              if (err) {
+                res.status(500).send({ err: ResError.s3Error });
+                return;
+              }
+            }
+          );
+        }
+
+        res.status(200).send(data);
+      } catch {
+        res.status(500).send({ err: ResError.serverError });
+      }
+    }
+  )
   .delete((req: Request, res: Response) => {
     Recipe.findByIdAndDelete(
       req.params.id,
@@ -162,7 +158,7 @@ router
         }
 
         const s3 = new aws.S3();
-        const params: PutObjectRequest = {
+        const params: DeleteObjectRequest = {
           Bucket: S3_BUCKET,
           Key: recipe.image,
         };

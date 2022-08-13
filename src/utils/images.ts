@@ -8,18 +8,24 @@ export const generateImageName = (originalName: string) =>
   "images/" + new Date().toISOString() + originalName;
 
 export const parseImage: RequestHandler = async (req, res, next) => {
-  const image: UploadedFile = req.body.image;
+  const image: UploadedFile | undefined = req.body.image;
+
+  if (!image) {
+    next();
+    return;
+  }
+
   const dims = sizeOf(image.data);
 
   if (dims.width && dims.height) {
     const resizeFactor = Math.round(dims.width / 700);
 
-    req.body.scaledImageBuffer = await sharp(image.data)
+    req.body.image.data = await sharp(image.data)
       .webp()
       .resize(700, Math.round(dims.height / resizeFactor))
       .toBuffer();
   } else {
-    throw new Error(ResError.fileError);
+    res.status(500).send({ err: ResError.fileError });
   }
 
   next();
