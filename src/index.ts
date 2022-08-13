@@ -3,22 +3,21 @@ import mongoose from "mongoose";
 import bodyParser from "body-parser";
 import cors from "cors";
 import dotenv from "dotenv";
-
 import { router as recipesRouter } from "./routes/recipes";
 
 const app = express();
+dotenv.config();
 
 const PORT = 8000;
 const corsOpts = {
   origin: "http://localhost:3000",
 };
 
-dotenv.config();
-const dbURI = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.9s0vp.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`;
+const DB_URI = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.9s0vp.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`;
 
 (async () => {
   try {
-    await mongoose.connect(dbURI);
+    await mongoose.connect(DB_URI);
     console.log("MONGOSE CONNECTION SUCCESSFUL");
 
     app.listen(PORT, "localhost", () => {
