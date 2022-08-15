@@ -1,4 +1,4 @@
-import express, { Request, Response } from "express";
+import express, { NextFunction, Request, Response } from "express";
 import aws from "aws-sdk";
 import dotenv from "dotenv";
 import fileUpload from "express-fileupload";
@@ -8,7 +8,7 @@ import { generateImageName, parseImage } from "../../utils/images";
 import { DeleteObjectRequest, PutObjectRequest } from "aws-sdk/clients/s3";
 import { MongooseError } from "mongoose";
 import { exit } from "process";
-import { ResError } from "../../errors";
+import { errorHandler, Errors } from "../../utils/errors";
 import { imageValidator, optionalImageValidator } from "../../utils/validation";
 
 dotenv.config();
@@ -26,7 +26,7 @@ router.use(fileUpload());
 const DEFAULT_LIMIT = 15;
 const DEFAULT_OFFSET = 0;
 
-router.use("/all", async (req: Request, res: Response) => {
+router.use("/all", async (req: Request, res: Response, next: NextFunction) => {
   const { search, limit, tags, offset }: IQueryParams = req.query;
   const query: { [key: string]: any } = {};
 
@@ -47,7 +47,7 @@ router.use("/all", async (req: Request, res: Response) => {
 
     res.status(200).send(data);
   } catch (err) {
-    res.status(500).send(err);
+    next(Errors.dbError);
   }
 });
 
@@ -55,7 +55,7 @@ router.post(
   "/add",
   imageValidator,
   parseImage,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const { image, ...reqBody } = req.body;
 
     const uniqueImageName = generateImageName(image.name);
@@ -74,28 +74,30 @@ router.post(
 
       s3.upload(params, (err) => {
         if (err) {
-          res.status(500).send({ errcode: ResError.s3Error, ResError: err });
+          return next(Errors.s3Error);
         }
       });
       res.status(201).send(data);
-    } catch (err) {}
+    } catch (err) {
+      next(Errors.invalidData);
+    }
   }
 );
 
 router
   .route("/:id")
-  .get(async (req: Request, res: Response) => {
+  .get(async (req: Request, res: Response, next: NextFunction) => {
     try {
       const data = await Recipe.findOne({ _id: req.params.id });
       res.status(200).send(data);
     } catch (err) {
-      res.status(404).send({ errcode: ResError.notFound, ResError: err });
+      next(Errors.notFound);
     }
   })
   .patch(
     optionalImageValidator,
     parseImage,
-    async (req: Request, res: Response) => {
+    async (req: Request, res: Response, next: NextFunction) => {
       let queryData = {
         ...req.body,
       };
@@ -110,51 +112,45 @@ router
 
         if (data && req.body.image) {
           const s3 = new aws.S3();
-          const params: PutObjectRequest = {
+          const uploadParams: PutObjectRequest = {
             Bucket: S3_BUCKET,
             Key: queryData.image,
             Body: req.body.image ? req.body.image.data : null,
           };
+          const deleteParams: DeleteObjectRequest = {
+            Bucket: S3_BUCKET,
+            Key: data.image,
+          };
 
-          s3.upload(params, (err) => {
+          s3.upload(uploadParams, (err) => {
             if (err) {
-              res.status(500).send({ err: ResError.s3Error });
-              return;
+              return next(Errors.s3Error);
             }
           });
 
-          s3.deleteObject(
-            {
-              Bucket: S3_BUCKET,
-              Key: data.image,
-            },
-            (err) => {
-              if (err) {
-                res.status(500).send({ err: ResError.s3Error });
-                return;
-              }
+          s3.deleteObject(deleteParams, (err) => {
+            if (err) {
+              return next(Errors.s3Error);
             }
-          );
+          });
         }
 
         res.status(200).send(data);
       } catch {
-        res.status(500).send({ err: ResError.serverError });
+        next(Errors.serverError);
       }
     }
   )
-  .delete((req: Request, res: Response) => {
+  .delete((req: Request, res: Response, next: NextFunction) => {
     Recipe.findByIdAndDelete(
       req.params.id,
       (err: MongooseError, recipe: IRecipe) => {
         if (err) {
-          res.status(500).send({ errcode: ResError.dbError, ResError: err });
-          return;
+          return next(Errors.dbError);
         }
 
-        if (recipe === null) {
-          res.status(404).send({ errcode: ResError.notFound });
-          return;
+        if (!recipe) {
+          return next(Errors.notFound);
         }
 
         const s3 = new aws.S3();
@@ -165,11 +161,12 @@ router
 
         s3.deleteObject(params, (err) => {
           if (err) {
-            res.status(500).send({ errcode: ResError.s3Error, ResError: err });
-            return;
+            return next(Errors.s3Error);
           }
           res.status(204).send();
         });
       }
     );
   });
+
+router.use(errorHandler);

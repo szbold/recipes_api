@@ -1,6 +1,6 @@
 import { RequestHandler } from "express";
 import { UploadedFile } from "express-fileupload";
-import { ResError } from "../errors";
+import { Errors } from "./errors";
 
 const allowedTypes = [
   "image/png",
@@ -10,17 +10,15 @@ const allowedTypes = [
   "image/webp",
 ];
 
-export const imageValidator: RequestHandler = (req, res, next) => {
+export const imageValidator: RequestHandler = (req, _, next) => {
   const image = req.files?.image;
 
   if (!image || Array.isArray(image)) {
-    res.status(400).send({ err: ResError.fileCount });
-    return;
+    return next(Errors.fileCount);
   }
 
   if (!allowedTypes.includes(image.mimetype)) {
-    res.status(400).send({ err: ResError.fileFormat });
-    return;
+    return next(Errors.fileFormat);
   }
 
   req.body.image = image;
@@ -28,13 +26,12 @@ export const imageValidator: RequestHandler = (req, res, next) => {
   next();
 };
 
-export const optionalImageValidator: RequestHandler = (req, res, next) => {
+export const optionalImageValidator: RequestHandler = (req, _, next) => {
   const image = req.files?.image;
 
   if (image && !Array.isArray(image)) {
     if (!allowedTypes.includes(image.mimetype)) {
-      res.status(400).send({ err: ResError.fileFormat });
-      return;
+      return next(Errors.fileFormat);
     }
 
     req.body.image = image;
@@ -52,6 +49,6 @@ export const optionalImageValidator: RequestHandler = (req, res, next) => {
 //   file: UploadedFile | UploadedFile[] | undefined
 // ) => {
 //   if (!file || Array.isArray(file)) {
-//     throw new Error(ResError.fileCount);
+//     throw new Error(Errors.fileCount);
 //   }
 // };

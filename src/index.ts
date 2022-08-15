@@ -4,6 +4,8 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import dotenv from "dotenv";
 import { router as recipesRouter } from "./routes/recipes";
+import { errorHandler } from "./utils/errors";
+import { logger } from "./utils/logger";
 
 const app = express();
 dotenv.config();
@@ -28,9 +30,9 @@ const DB_URI = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWO
   }
 })();
 
-app.use("/images", express.static("images"));
 app.use(cors(corsOpts));
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(logger);
 
 app.use("/recipes", recipesRouter);

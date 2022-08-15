@@ -2,7 +2,7 @@ import { RequestHandler } from "express";
 import { UploadedFile } from "express-fileupload";
 import sharp from "sharp";
 import sizeOf from "image-size";
-import { ResError } from "../errors";
+import { Errors } from "./errors";
 
 export const generateImageName = (originalName: string) =>
   "images/" + new Date().toISOString() + originalName;
@@ -11,7 +11,7 @@ export const parseImage: RequestHandler = async (req, res, next) => {
   const image: UploadedFile | undefined = req.body.image;
 
   if (!image) {
-    next();
+    next(Errors.fileCount);
     return;
   }
 
@@ -25,7 +25,7 @@ export const parseImage: RequestHandler = async (req, res, next) => {
       .resize(700, Math.round(dims.height / resizeFactor))
       .toBuffer();
   } else {
-    res.status(500).send({ err: ResError.fileError });
+    next(new Error(Errors.fileError));
   }
 
   next();
